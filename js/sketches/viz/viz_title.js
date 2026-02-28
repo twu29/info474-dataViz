@@ -82,7 +82,7 @@
                 p.textSize(14);
                 p.textStyle(p.NORMAL);
                 p.fill(100);
-                p.text('From Athens 1896 to the modern Games', cx, textY + 30);
+                p.text('From Athens 1896 to the modern 2024 Games', cx, textY + 30);
             }
 
             // Draw sports pictogram image below the card

@@ -1,180 +1,300 @@
 // viz_heatmap.js
-// Geographic heatmap showing medal counts by country on a world map (placeholder data)
+// Bubble matrix: countries (Y) × Olympic years (X), circle size = medal count
+// num===2 → Summer, num===3 → Winter
 (function () {
-    // Equirectangular projection helpers
-    function lonToX(lon, left, w) {
-        return left + ((lon + 180) / 360) * w;
-    }
-    function latToY(lat, top, h) {
-        return top + ((90 - lat) / 180) * h;
-    }
+    var summerData = null;
+    var winterData = null;
+    var loading = false;
+    var tooltip = null;
 
-    // Simplified continent outlines (lon, lat pairs)
-    var continents = {
-        northAmerica: [
-            [-130,50],[-125,60],[-110,68],[-95,72],[-80,70],[-65,60],[-55,48],
-            [-65,45],[-70,42],[-75,35],[-82,25],[-90,20],[-105,20],[-115,30],
-            [-125,40],[-130,50]
-        ],
-        southAmerica: [
-            [-80,10],[-75,5],[-70,-5],[-75,-15],[-70,-25],[-65,-35],[-68,-45],
-            [-73,-52],[-65,-55],[-60,-50],[-55,-35],[-50,-25],[-45,-15],[-35,-5],
-            [-50,0],[-60,5],[-70,10],[-80,10]
-        ],
-        europe: [
-            [-10,36],[0,38],[5,44],[0,48],[-5,48],[0,52],[5,54],[10,55],[15,55],
-            [20,55],[25,55],[30,58],[30,65],[25,70],[15,70],[10,65],[5,60],
-            [0,55],[-5,52],[-10,50],[-10,36]
-        ],
-        africa: [
-            [-15,35],[-17,15],[-10,5],[-5,5],[5,5],[10,2],[15,5],[25,0],[30,-5],
-            [35,-10],[40,-15],[35,-25],[30,-30],[25,-33],[20,-35],[15,-30],
-            [10,-20],[10,-10],[5,0],[0,5],[-5,10],[-15,15],[-15,35]
-        ],
-        asia: [
-            [30,35],[35,35],[40,40],[50,40],[55,45],[60,50],[70,55],[80,55],
-            [90,50],[100,55],[110,55],[120,55],[130,55],[135,50],[140,45],
-            [140,40],[130,35],[120,30],[110,20],[105,15],[100,15],[95,20],
-            [90,25],[85,25],[80,15],[75,10],[70,20],[65,25],[55,25],[45,30],
-            [35,30],[30,35]
-        ],
-        oceania: [
-            [115,-15],[120,-18],[130,-15],[140,-12],[148,-15],[150,-20],[152,-25],
-            [150,-30],[145,-35],[140,-38],[135,-35],[130,-32],[125,-30],[118,-22],
-            [115,-15]
-        ]
+    // Merge map: combine historical NOC codes into modern equivalents
+    var mergeNOC = {
+        URS: 'RUS', EUN: 'RUS',
+        GDR: 'GER', FRG: 'GER',
+        TCH: 'CZE', BOH: 'CZE',
+        YUG: 'SRB', SCG: 'SRB',
+        ANZ: 'AUS',
+        WIF: 'TTO',
     };
 
-    // Country centroids (lon, lat) and placeholder total medal counts
-    var countries = [
-        { code: 'USA', lon: -98, lat: 38, medals: 2650, name: 'United States' },
-        { code: 'RUS', lon: 60, lat: 55, medals: 1556, name: 'Russia/USSR' },
-        { code: 'GER', lon: 10, lat: 51, medals: 1300, name: 'Germany' },
-        { code: 'GBR', lon: -2, lat: 54, medals: 920, name: 'Great Britain' },
-        { code: 'FRA', lon: 2, lat: 47, medals: 840, name: 'France' },
-        { code: 'ITA', lon: 12, lat: 42, medals: 700, name: 'Italy' },
-        { code: 'CHN', lon: 105, lat: 35, medals: 640, name: 'China' },
-        { code: 'AUS', lon: 134, lat: -25, medals: 560, name: 'Australia' },
-        { code: 'JPN', lon: 138, lat: 36, medals: 500, name: 'Japan' },
-        { code: 'KOR', lon: 128, lat: 36, medals: 340, name: 'South Korea' },
-        { code: 'CUB', lon: -79, lat: 22, medals: 230, name: 'Cuba' },
-        { code: 'BRA', lon: -52, lat: -15, medals: 150, name: 'Brazil' },
-        { code: 'KEN', lon: 38, lat: 1, medals: 110, name: 'Kenya' },
-        { code: 'NOR', lon: 10, lat: 62, medals: 190, name: 'Norway' },
-        { code: 'SWE', lon: 16, lat: 62, medals: 210, name: 'Sweden' },
-        { code: 'CAN', lon: -106, lat: 56, medals: 320, name: 'Canada' },
-        { code: 'NED', lon: 5, lat: 52, medals: 300, name: 'Netherlands' },
-        { code: 'HUN', lon: 19, lat: 47, medals: 510, name: 'Hungary' },
-        { code: 'JAM', lon: -77, lat: 18, medals: 85, name: 'Jamaica' },
-        { code: 'ETH', lon: 39, lat: 9, medals: 60, name: 'Ethiopia' },
-        { code: 'NZL', lon: 174, lat: -41, medals: 130, name: 'New Zealand' },
-        { code: 'IND', lon: 79, lat: 21, medals: 35, name: 'India' }
-    ];
+    var nameOverride = {
+        USA: 'United States', GBR: 'Great Britain', RUS: 'Russia', GER: 'Germany',
+        FRA: 'France', CHN: 'China', AUS: 'Australia', JPN: 'Japan', ITA: 'Italy',
+        HUN: 'Hungary', SWE: 'Sweden', NED: 'Netherlands', CAN: 'Canada',
+        KOR: 'South Korea', NOR: 'Norway', CUB: 'Cuba', BRA: 'Brazil',
+        ESP: 'Spain', POL: 'Poland', ROU: 'Romania', DEN: 'Denmark',
+        NZL: 'New Zealand', FIN: 'Finland', BEL: 'Belgium', SUI: 'Switzerland',
+        CZE: 'Czech Republic', SRB: 'Serbia', KEN: 'Kenya', JAM: 'Jamaica',
+        ETH: 'Ethiopia', UKR: 'Ukraine', ARG: 'Argentina', TUR: 'Turkey',
+        AUT: 'Austria',
+    };
 
-    var maxMedals = 2650;
+    var SUMMER_TOP_N = 22;
+    var WINTER_TOP_N = 18;
 
-    function getMedalColor(val, maxVal) {
-        var t = Math.pow(val / maxVal, 0.6); // non-linear for better spread
-        // Light yellow -> orange -> deep red
-        var r = Math.floor(255 - t * 55);
-        var g = Math.floor(235 - t * 195);
-        var b = Math.floor(130 - t * 120);
-        return [r, g, b];
+    var summerYears = [1896,1900,1904,1908,1912,1920,1924,1928,1932,1936,
+                       1948,1952,1956,1960,1964,1968,1972,1976,1980,1984,
+                       1988,1992,1996,2000,2004,2008,2012,2016,2020];
+
+    var winterYears = [1924,1928,1932,1936,1948,1952,1956,1960,1964,1968,
+                       1972,1976,1980,1984,1988,1992,1994,1998,2002,2006,
+                       2010,2014,2018,2022];
+
+    function buildDataset(rows, iYear, iType, iNoc, iMedal, seasonFilter, validYears, topN) {
+        var agg = {};
+        var yearSet = {};
+
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            if (row[iType] !== seasonFilter) continue;
+
+            var medal = (row[iMedal] || '').trim();
+            if (!medal) continue;
+
+            var year = Math.round(parseFloat(row[iYear]));
+            var noc = (row[iNoc] || '').trim();
+            if (!noc || isNaN(year)) continue;
+
+            noc = mergeNOC[noc] || noc;
+            yearSet[year] = true;
+
+            if (!agg[noc]) agg[noc] = {};
+            if (!agg[noc][year]) agg[noc][year] = { gold: 0, silver: 0, bronze: 0 };
+
+            if (medal === 'Gold') agg[noc][year].gold++;
+            else if (medal === 'Silver') agg[noc][year].silver++;
+            else if (medal === 'Bronze') agg[noc][year].bronze++;
+        }
+
+        var countries = [];
+        var nocKeys = Object.keys(agg);
+        for (var n = 0; n < nocKeys.length; n++) {
+            var noc = nocKeys[n];
+            var total = 0;
+            var byYear = {};
+            var yKeys = Object.keys(agg[noc]);
+            for (var y = 0; y < yKeys.length; y++) {
+                var d = agg[noc][yKeys[y]];
+                var t = d.gold + d.silver + d.bronze;
+                total += t;
+                byYear[yKeys[y]] = { gold: d.gold, silver: d.silver, bronze: d.bronze, total: t };
+            }
+            countries.push({ noc: noc, name: nameOverride[noc] || noc, total: total, byYear: byYear });
+        }
+
+        countries.sort(function (a, b) { return b.total - a.total; });
+        countries = countries.slice(0, topN);
+
+        var years = Object.keys(yearSet).map(Number).sort(function (a, b) { return a - b; });
+        years = years.filter(function (y) { return validYears.indexOf(y) >= 0; });
+
+        var maxCount = 0;
+        for (var c = 0; c < countries.length; c++) {
+            for (var y = 0; y < years.length; y++) {
+                var d = countries[c].byYear[years[y]];
+                if (d && d.total > maxCount) maxCount = d.total;
+            }
+        }
+
+        return { countries: countries, years: years, maxCount: maxCount };
+    }
+
+    function loadData() {
+        if (loading || (summerData && winterData)) return;
+        loading = true;
+
+        fetch('data/results.csv')
+            .then(function (r) { return r.text(); })
+            .then(function (text) {
+                var lines = text.trim().split(/\r?\n/);
+                var header = lines[0].split(',');
+                var iYear = header.indexOf('year');
+                var iType = header.indexOf('type');
+                var iNoc = header.indexOf('noc');
+                var iMedal = header.indexOf('medal');
+
+                // Parse all rows once
+                var rows = [];
+                for (var i = 1; i < lines.length; i++) {
+                    var row = [];
+                    var cur = '';
+                    var inQuote = false;
+                    for (var c = 0; c < lines[i].length; c++) {
+                        var ch = lines[i][c];
+                        if (ch === '"') { inQuote = !inQuote; }
+                        else if (ch === ',' && !inQuote) { row.push(cur); cur = ''; }
+                        else { cur += ch; }
+                    }
+                    row.push(cur);
+                    rows.push(row);
+                }
+
+                summerData = buildDataset(rows, iYear, iType, iNoc, iMedal, 'Summer', summerYears, SUMMER_TOP_N);
+                winterData = buildDataset(rows, iYear, iType, iNoc, iMedal, 'Winter', winterYears, WINTER_TOP_N);
+                loading = false;
+            })
+            .catch(function (err) {
+                console.error('Failed to load heatmap data:', err);
+                loading = false;
+            });
+    }
+
+    loadData();
+
+    function drawBubbleMatrix(p, manager, data, title, bubbleColor) {
+        var countries = data.countries;
+        var years = data.years;
+        var maxCount = data.maxCount;
+
+        p.push();
+
+        var labelW = 110;
+        var left = (manager.offsetX || 80) + labelW;
+        var topY = (manager.offsetY || 0) + 70;
+        var chartW = (manager.width || 600) - labelW - 20;
+        var chartH = (manager.height || 520) - 120;
+
+        var rowH = chartH / countries.length;
+        var colW = chartW / years.length;
+        var maxR = Math.min(rowH, colW) * 0.45;
+
+        // Title
+        p.noStroke();
+        p.fill(30);
+        p.textAlign(p.CENTER, p.TOP);
+        p.textSize(15);
+        p.textStyle(p.BOLD);
+        p.text(title, left + chartW / 2, topY - 60);
+        p.textStyle(p.NORMAL);
+        p.textSize(10);
+        p.fill(100);
+        p.text('Hover over a dot to see the medal distribution.', left + chartW / 2, topY - 42);
+
+        // Year labels
+        p.fill(80);
+        p.textAlign(p.CENTER, p.BOTTOM);
+        p.textSize(9);
+        for (var y = 0; y < years.length; y++) {
+            var cx = left + y * colW + colW / 2;
+            if ((years[y] % 10 === 0 || years[y] === years[0] || years[y] === years[years.length - 1]) && years[y] !== 1896) {
+                p.text(years[y], cx, topY - 4);
+            }
+        }
+
+        // Mouse position for hover
+        var mx = p.mouseX;
+        var my = p.mouseY;
+        tooltip = null;
+
+        // Rows
+        for (var c = 0; c < countries.length; c++) {
+            var cy = topY + c * rowH + rowH / 2;
+
+            // Dashed grid line
+            p.stroke(210);
+            p.strokeWeight(0.5);
+            var lineY = cy + rowH / 2;
+            for (var dx = left; dx < left + chartW; dx += 7) {
+                var endX = Math.min(dx + 4, left + chartW);
+                p.line(dx, lineY, endX, lineY);
+            }
+
+            // Country label
+            p.noStroke();
+            p.fill(50);
+            p.textAlign(p.RIGHT, p.CENTER);
+            p.textSize(10);
+            p.text(countries[c].name, left - 8, cy);
+
+            // Dots
+            for (var y = 0; y < years.length; y++) {
+                var d = countries[c].byYear[years[y]];
+                if (!d || d.total === 0) continue;
+
+                var cx2 = left + y * colW + colW / 2;
+                var r = 2 + Math.sqrt(d.total / maxCount) * maxR;
+
+                p.noStroke();
+                p.fill(bubbleColor[0], bubbleColor[1], bubbleColor[2], 180);
+                p.ellipse(cx2, cy, r * 2, r * 2);
+
+                var dist = Math.sqrt((mx - cx2) * (mx - cx2) + (my - cy) * (my - cy));
+                if (dist < r + 2) {
+                    tooltip = {
+                        x: cx2, y: cy,
+                        country: countries[c].name,
+                        year: years[y],
+                        gold: d.gold, silver: d.silver, bronze: d.bronze,
+                        total: d.total,
+                        maxCount: maxCount, maxR: maxR
+                    };
+                }
+            }
+        }
+
+        // Tooltip
+        if (tooltip) {
+            p.noFill();
+            p.stroke(120, 90, 30);
+            p.strokeWeight(2);
+            var hr = 2 + Math.sqrt(tooltip.total / tooltip.maxCount) * tooltip.maxR;
+            p.ellipse(tooltip.x, tooltip.y, hr * 2 + 3, hr * 2 + 3);
+
+            var tw = 140;
+            var th = 68;
+            var tx = tooltip.x + 12;
+            var ty = tooltip.y - th - 5;
+            if (tx + tw > p.width - 10) tx = tooltip.x - tw - 12;
+            if (ty < 5) ty = tooltip.y + 12;
+
+            p.noStroke();
+            p.fill(255, 255, 255, 240);
+            p.rect(tx, ty, tw, th, 4);
+            p.stroke(180);
+            p.strokeWeight(0.5);
+            p.noFill();
+            p.rect(tx, ty, tw, th, 4);
+
+            p.noStroke();
+            p.fill(30);
+            p.textAlign(p.LEFT, p.TOP);
+            p.textSize(10);
+            p.textStyle(p.BOLD);
+            p.text(tooltip.country + ' (' + tooltip.year + ')', tx + 8, ty + 6);
+            p.textStyle(p.NORMAL);
+            p.textSize(9);
+            p.fill(60);
+            p.text('Gold: ' + tooltip.gold, tx + 8, ty + 22);
+            p.text('Silver: ' + tooltip.silver, tx + 8, ty + 35);
+            p.text('Bronze: ' + tooltip.bronze, tx + 8, ty + 48);
+            p.fill(30);
+            p.textStyle(p.BOLD);
+            p.text('Total: ' + tooltip.total, tx + 80, ty + 35);
+            p.textStyle(p.NORMAL);
+        }
+
+        p.pop();
     }
 
     window.VizHeatmap = {
-        draw: function (p, manager, ai, progress) {
-            p.push();
-            var left = (manager.offsetX || 80);
-            var top = (manager.offsetY || 0) + 55;
-            var w = (manager.width || 600) - 10;
-            var h = (manager.height || 520) - 110;
-
-            // Title
-            p.noStroke();
-            p.fill(40);
-            p.textAlign(p.LEFT, p.TOP);
-            p.textSize(15);
-            p.textStyle(p.BOLD);
-            p.text('Olympic Medal Counts by Country', left, top - 45);
-            p.textStyle(p.NORMAL);
-            p.textSize(11);
-            p.fill(100);
-            p.text('Total medals won across all Summer Olympic Games', left, top - 27);
-
-            // Ocean background
-            p.fill(230, 240, 250);
-            p.noStroke();
-            p.rect(left, top, w, h, 4);
-
-            // Draw continent outlines
-            p.fill(235, 235, 230);
-            p.stroke(200);
-            p.strokeWeight(0.8);
-            var contKeys = Object.keys(continents);
-            for (var c = 0; c < contKeys.length; c++) {
-                var pts = continents[contKeys[c]];
-                p.beginShape();
-                for (var i = 0; i < pts.length; i++) {
-                    var px = lonToX(pts[i][0], left, w);
-                    var py = latToY(pts[i][1], top, h);
-                    p.vertex(px, py);
-                }
-                p.endShape(p.CLOSE);
+        draw: function (p, manager, num, progress) {
+            if (!summerData || !winterData) {
+                p.push();
+                p.fill(100);
+                p.textAlign(p.CENTER, p.CENTER);
+                p.textSize(14);
+                p.text('Loading medal data...', p.width / 2, p.height / 2);
+                p.pop();
+                return;
             }
 
-            // Draw country bubbles
-            p.noStroke();
-            for (var i = 0; i < countries.length; i++) {
-                var ct = countries[i];
-                var cx = lonToX(ct.lon, left, w);
-                var cy = latToY(ct.lat, top, h);
-                var size = 8 + Math.sqrt(ct.medals / maxMedals) * 30;
-                var col = getMedalColor(ct.medals, maxMedals);
-
-                // Bubble
-                p.fill(col[0], col[1], col[2], 200);
-                p.ellipse(cx, cy, size, size);
-
-                // Label
-                p.fill(40);
-                p.textAlign(p.CENTER, p.TOP);
-                p.textSize(8);
-                p.noStroke();
-                p.text(ct.code, cx, cy + size / 2 + 2);
+            if (num === 3) {
+                drawBubbleMatrix(p, manager, winterData,
+                    'Olympic Winter Games Medal Table', [100, 160, 210]);
+            } else {
+                drawBubbleMatrix(p, manager, summerData,
+                    'Olympic Summer Games Medal Table', [210, 180, 100]);
             }
-
-            // Legend
-            var legendX = left + 5;
-            var legendY = top + h + 12;
-            p.fill(60);
-            p.textAlign(p.LEFT, p.CENTER);
-            p.textSize(10);
-            p.text('Fewer medals', legendX, legendY);
-
-            var gradX = legendX + 75;
-            var gradW = 100;
-            var gradH = 10;
-            for (var i = 0; i < 20; i++) {
-                var t = i / 19;
-                var gc = getMedalColor(t * maxMedals, maxMedals);
-                p.fill(gc[0], gc[1], gc[2]);
-                p.noStroke();
-                p.rect(gradX + i * (gradW / 20), legendY - gradH / 2, gradW / 20 + 1, gradH);
-            }
-
-            p.fill(60);
-            p.textAlign(p.LEFT, p.CENTER);
-            p.text('More medals', gradX + gradW + 5, legendY);
-
-            // Circle size legend
-            var sizeX = gradX + gradW + 100;
-            p.fill(60);
-            p.textAlign(p.LEFT, p.CENTER);
-            p.textSize(9);
-            p.text('Circle size = total medals', sizeX, legendY);
-
-            p.pop();
         }
     };
 })();
