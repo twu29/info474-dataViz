@@ -1,6 +1,6 @@
 // viz_heatmap.js
 // Bubble matrix: countries (Y) × Olympic years (X), circle size = medal count
-// ai===2 → Summer, ai===3 → Winter
+// num===2 → Summer, num===3 → Winter
 (function () {
     var summerData = null;
     var winterData = null;
@@ -277,7 +277,7 @@
     }
 
     window.VizHeatmap = {
-        draw: function (p, manager, ai, progress) {
+        draw: function (p, manager, num, progress) {
             if (!summerData || !winterData) {
                 p.push();
                 p.fill(100);
@@ -288,7 +288,7 @@
                 return;
             }
 
-            if (ai === 3) {
+            if (num === 3) {
                 drawBubbleMatrix(p, manager, winterData,
                     'Olympic Winter Games Medal Table', [100, 160, 210]);
             } else {
