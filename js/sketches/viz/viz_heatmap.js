@@ -176,7 +176,7 @@
         p.textSize(9);
         for (var y = 0; y < years.length; y++) {
             var cx = left + y * colW + colW / 2;
-            if (years[y] % 10 === 0 || years[y] === years[0] || years[y] === years[years.length - 1]) {
+            if ((years[y] % 10 === 0 || years[y] === years[0] || years[y] === years[years.length - 1]) && years[y] !== 1896) {
                 p.text(years[y], cx, topY - 4);
             }
         }
