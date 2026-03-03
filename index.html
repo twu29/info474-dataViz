@@ -74,16 +74,23 @@
 
         <section class="step" data-active-index="6">
           <div class="title">How has athlete participation changed over time between countries?</div>
-          This visualization shows how total athlete participation from different countries has changed over time. 
-          Using a simple multi-line chart, it compares the number of athletes each country has sent to the Olympics, 
-          highlighting trends in growth and representation. The chart is exploratory, offering a high-level view of 
-          how country participation has expanded across the Olympic Games.
+          This visualization shows how athlete participation is distributed across countries for the Summer Olympics. 
+          Using a waffle chart, each square represents a portion of athletes, with colors corresponding to different 
+          countries. Larger countries with more participants occupy more squares, making it easy to compare representation at a glance.
+
+          A year slider allows viewers to move through different Olympic years and see how the composition of 
+          participating countries changes over time. This interactive view highlights how global participation has 
+          expanded and how the balance of athlete representation shifts from one Summer Olympics to another.
         </section>
         <section class="step" data-active-index="7">
-          <div class="title">How has athlete participation changed over time with gender?</div>
-          This line graph shows the sex distribution of athletes from the top winning and top losing countries over time. 
-          It compares the proportion of male and female competitors within these groups, highlighting differences in gender 
-          balance and how representation has shifted across Olympic history.
+          <div class="title">How has athlete participation changed over time between countries?</div>
+          This visualization shows how athlete participation is distributed across countries for the Winter Olympics. 
+          Using a waffle chart, each square represents a portion of athletes, with colors corresponding to different 
+          countries. Countries with more athletes fill more squares, allowing viewers to quickly compare representation across nations.
+
+          A year slider allows viewers to move through different Olympic years and see how the distribution of participating 
+          countries changes over time. This interactive view highlights how Winter Olympic participation has evolved and how 
+          different countries contribute varying numbers of athletes across different Games.
         </section>
       </div>
       <div id='vis' class='vis-hidden'>
@@ -111,7 +118,7 @@
   <script src="js/sketches/viz/viz_title.js"></script>
   <script src="js/sketches/viz/viz_heatmap.js"></script>
   <script src="js/sketches/viz/viz_age_bar.js"></script>
-  <script src="js/sketches/viz/viz_line.js"></script>
+  <script src="js/sketches/viz/viz_waffle.js"></script>
   <script src="js/sketches/sketch_renderer.js"></script>
 
 

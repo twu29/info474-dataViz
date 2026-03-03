@@ -37,7 +37,7 @@
 
             // Section 6-7: Participation multi-line chart
             if (ai === 6 || ai === 7) {
-                window.VizLine.draw(p, manager, ai, progress);
+                window.VizWaffle.draw(p, manager, ai, progress);
                 return;
             }
         }
