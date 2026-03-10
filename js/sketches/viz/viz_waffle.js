@@ -9,6 +9,7 @@
   
   var seasonData = { Summer: {}, Winter: {} };
   var seasonYears = { Summer: [], Winter: [] };
+  var isYogYearBySeason = { Summer: {}, Winter: {} };
 
   var regionByNoc = {};
   var yearIdxBySeason = { Summer: 0, Winter: 0 };
@@ -71,6 +72,7 @@
     var iType = h.indexOf('type');
     var iNoc  = h.indexOf('noc');
     var iAid  = h.indexOf('athlete_id');
+    var iEvent = h.indexOf('event');
 
     if (iYear < 0 || iType < 0 || iNoc < 0 || iAid < 0) {
       throw new Error('results.csv needs columns: year, type, noc, athlete_id');
@@ -87,10 +89,16 @@
       var yearRaw = (row[iYear] || '').trim();
       var noc = (row[iNoc] || '').trim();
       var aid = (row[iAid] || '').trim();
+      var event = (iEvent >= 0 ? (row[iEvent] || '').trim() : '');
+
       if (!yearRaw || !noc || !aid) continue;
 
       var year = parseInt(parseFloat(yearRaw), 10);
       if (isNaN(year)) continue;
+
+      if (event.indexOf('(YOG)') >= 0) {
+        isYogYearBySeason[season][year] = true;
+      }
 
       var key = season + '|' + year + '|' + noc + '|' + aid;
       if (seen[key]) continue;
@@ -98,6 +106,8 @@
 
       if (!seasonData[season][year]) seasonData[season][year] = {};
       seasonData[season][year][noc] = (seasonData[season][year][noc] || 0) + 1;
+
+      
     }
 
     seasonYears.Summer = Object.keys(seasonData.Summer).map(function (d) { return parseInt(d, 10); }).sort(function (a, b) { return a - b; });
@@ -160,7 +170,7 @@
         name: regionByNoc[nocb] || nocb,
         count: big[b].count,
         squares: Math.floor(big[b].count / K),
-        hue: hashHue(nocb),
+        hue: (b * 45) % 360,
         isOther: false
       });
     }
@@ -218,6 +228,13 @@
     return { K: K, total: total, usedSquares: usedSquares, groups: groups, squareOwner: squareOwner };
   }
 
+  function formatYearLabel(season, year) {
+    if (isYogYearBySeason[season] && isYogYearBySeason[season][year]) {
+      return year + ' (YOG)';
+    }
+    return String(year);
+  }
+
   function drawTimeline(p, x, y, w, h, yearsArr, season) {
     var idx = yearIdxBySeason[season] || 0;
     var t = (yearsArr.length <= 1) ? 0 : (idx / (yearsArr.length - 1));
@@ -239,7 +256,7 @@
     p.fill(60);
     p.textSize(11);
     p.textAlign(p.CENTER, p.BOTTOM);
-    p.text(yearsArr[idx] || '', x + w / 2, y - 6);
+    p.text(formatYearLabel(season, yearsArr[idx]), x + w / 2, y - 6);
 
     var mx = p.mouseX, my = p.mouseY;
     var over = (mx >= x && mx <= x + w && my >= y - 8 && my <= y + h + 8);
@@ -361,7 +378,7 @@
     p.fill(90);
     p.textAlign(p.LEFT, p.TOP);
     p.textSize(10);
-    p.text('Year: ' + year + ' | Total unique athletes: ' + wf.total + 
+    p.text('Year: ' + formatYearLabel(season, year) + ' | Total unique athletes: ' + wf.total + 
     ' | K = ' + wf.K + ' athletes/square | Squares used: ' + wf.usedSquares + '/' + MAX_SQUARES,
     marginLeft, marginTop + chartH - 70);
 
