@@ -75,6 +75,9 @@
                 p.textStyle(p.NORMAL);
                 p.fill(100);
                 p.text('Exploring athlete participation & medaling', cx, textY + 35);
+                p.textSize(13);
+                p.fill(120);
+                p.text('Authors: Alley Wu, Cassie Hoang, Vincent Liu', cx, textY + 60);
             } else {
                 p.textSize(24);
                 p.textStyle(p.BOLD);
